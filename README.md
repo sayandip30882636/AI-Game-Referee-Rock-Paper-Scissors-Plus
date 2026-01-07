@@ -77,7 +77,8 @@ pip install google-generativeai
 
 3. **Configure API Key:**
 Open `Rock_Paper_Scissors_Referee_ADK.ipynb` and paste your key at the bottom:
-```python
+```
+python
 MY_API_KEY = "YOUR_GOOGLE_API_KEY_HERE"
 
 ```
@@ -104,6 +105,3 @@ python main.py
 **Author:** Sayandip
 **Tech Stack:** Python, Google GenAI SDK (ADK)
 
-```
-
-```
