@@ -86,7 +86,7 @@ MY_API_KEY = "YOUR_GOOGLE_API_KEY_HERE"
 
 4. **Run the Game:**
 ```bash
-python main.py
+Go to VsCode or Colab / any notebook then run the ipynb file 
 
 ```
 
