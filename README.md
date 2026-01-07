@@ -151,8 +151,6 @@ Open the notebook in **VS Code, Colab, or Jupyter**, and run all cells sequentia
 
 * **Persistence:** Add lightweight session storage (e.g., SQLite) for resumable games
 * **UI:** Replace CLI interaction with a Streamlit-based interface
-* **Testing:** Add unit tests for move validation and round resolution
-* **Packaging:** Convert notebook into a single Python entry-point script
 
 ---
 
@@ -164,5 +162,3 @@ Open the notebook in **VS Code, Colab, or Jupyter**, and run all cells sequentia
 Python · Google ADK · Gemini Models · Deterministic Tooling
 
 ---
-
-Just tell me 👍
