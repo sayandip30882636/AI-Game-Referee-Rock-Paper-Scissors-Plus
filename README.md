@@ -1,107 +1,168 @@
-
-# 🤖 AI Game Referee: Rock-Paper-Scissors-Plus
+# 🤖 AI Game Referee — Rock-Paper-Scissors-Plus
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![Gemini API](https://img.shields.io/badge/AI-Google%20Gemini%20Flash-orange)
+![Google ADK](https://img.shields.io/badge/Framework-Google%20ADK-orange)
 ![Status](https://img.shields.io/badge/Status-Completed-green)
 
-A deterministic, state-aware Game Referee built with the **Google Generative AI SDK**.
-This project demonstrates how to build a reliable "Product-Grade" agent that strictly enforces game rules without hallucinating scores, using a **Hybrid Architecture** (LLM Interface + Deterministic Logic Engine).
+A deterministic, state-aware **AI Game Referee** built using **Google ADK** and **Gemini models**.
+This project demonstrates how to design a **product-grade conversational agent** that enforces game rules reliably while avoiding LLM hallucinations through a **hybrid architecture** (LLM interface + deterministic game engine).
 
 ---
 
 ## 📋 Assignment Overview
-**Goal:** Build a minimal AI Game Referee chatbot that enforces rules for *Rock-Paper-Scissors-Plus* (Best of 3, with a special "Bomb" move).
-**Core Challenge:** Prevent the LLM from hallucinating the game state while maintaining a conversational interface.
+
+**Goal:**
+Build a minimal AI chatbot that acts as a referee for **Rock-Paper-Scissors-Plus**, enforcing all rules and managing a *best-of-three* game.
+
+**Key Challenge:**
+Maintain strict correctness of game state and outcomes while still supporting a natural conversational interface.
 
 ---
 
 ## 🏗️ Architecture & Design
 
-My solution follows the **"Blind Referee" Pattern**. I strictly separated the *Intent Understanding* (LLM) from the *Game Logic* (Python).
+This solution follows a **“Blind Referee” design pattern**, where the language model is never trusted with game logic or state mutation.
 
-### 1. State Modeling (The Source of Truth)
-To ensure the game state never lives "only in the prompt," I implemented a rigid Pydantic-style data model:
-* **Storage:** `GameState` class (persists in memory, outside the context window).
-* **Tracking:** Explicitly tracks `round_count`, `user_score`, `bot_score`, and boolean flags for `bomb_used` (enforcing the 1-bomb-per-game rule).
-* **Serialization:** The state is converted to JSON only when communicating with the Agent, ensuring the LLM always sees the undeniable truth.
+### 1. State Modeling — Single Source of Truth
 
-### 2. Agent-Tool Interface
-The Gemini Agent acts as a **UI Layer**, not a Judge.
-* **The Agent:** Configured with a system prompt that forbids calculation. Its only job is to parse user intent (e.g., "I throw a rock") and call the tool.
-* **The Tool (`resolve_round`):** A deterministic Python function that executes the "Laws of Physics" for the game (Move comparison, Scoring, Validations).
-* **Flow:** `User Input` → `Agent Intent` → `Tool Execution` → `JSON Result` → `Agent Response`.
+To ensure state never lives *only* inside the prompt:
+
+* **State Object:** `GameState` (Python dataclass)
+* **Tracks:**
+
+  * `round_count`
+  * `user_score`, `bot_score`
+  * bomb usage flags (enforces *one bomb per player*)
+  * match history for round-by-round feedback
+* **Persistence:** State lives entirely in Python memory
+* **Serialization:** Converted to JSON only when passed to ADK tools or agent responses
+
+This guarantees that the LLM always operates on **explicit, authoritative state**.
 
 ---
 
-## 🛠️ Key Features & Tradeoffs
+### 2. Agent–Tool Separation (Google ADK)
 
-### 🟢 Strict "Wasted Round" Handling
-[cite_start]The requirements stated: *"Invalid input wastes the round"*[cite: 25].
-* **Design Decision:** Instead of a soft "Please try again" loop, I implemented strict compliance.
-* **Implementation:** If a user inputs "Lizard" or tries to use a Bomb twice, the engine captures this as `Move.INVALID`, increments the round counter, but awards **zero points**.
+The system is intentionally split into clear responsibilities:
 
-### 🟢 Rate Limit Failover (Reliability)
-* **The Problem:** The Google Gemini Free Tier has a limit of ~15 Requests Per Minute (RPM).
-* **The Solution:** I implemented a **Hybrid Failover Mechanism**.
-    1. **Throttling:** A `time.sleep(2)` delay is added to the loop.
-    2. **Fallback Mode:** If the API returns a `429 Quota Error`, the game **does not crash**. It automatically switches to a "Offline Referee" mode, printing the raw result from the logic engine to keep the user's session alive.
+* **Agent (LLM layer):**
 
-### 🟢 "Intelligent" Bot Strategy
-Instead of pure randomness, the bot uses a heuristic:
-* *Logic:* If it is the Final Round (3), the Bot is losing, and it still has a Bomb → **It will use the Bomb.**
-* [cite_start]This satisfies the requirement to "respond intelligently" rather than randomly[cite: 5].
+  * Interprets user intent (e.g., “I choose rock”)
+  * Explains outcomes and prompts the next move
+  * **Explicitly forbidden** from performing game logic or calculations
+
+* **Tools (Deterministic Logic):**
+
+  * `validate_move`
+  * `resolve_round`
+  * `update_game_state`
+
+* **Execution Flow:**
+
+```
+User Input
+   ↓
+ADK Agent (intent parsing)
+   ↓
+Tool Execution (validation + scoring)
+   ↓
+Updated GameState (JSON)
+   ↓
+Agent Response (natural language)
+```
+
+This design satisfies the requirement that **state mutation must happen through tools**, not prompts.
+
+---
+
+## 🛠️ Key Features & Design Decisions
+
+### 🟢 Strict “Wasted Round” Enforcement
+
+* Invalid input (e.g., `"lizard"`, second bomb attempt) **consumes the round**
+* No retry loops or soft corrections
+* Score remains unchanged, but round counter increments
+
+This ensures full compliance with the assignment rules.
+
+---
+
+### 🟢 Deterministic, Explainable Outcomes
+
+* All round resolutions are handled by pure Python logic
+* The LLM only *reports* results returned by tools
+* Prevents hallucinated scores or inconsistent outcomes
+
+---
+
+### 🟢 Simple but Intentional Bot Strategy
+
+Instead of pure randomness:
+
+* If it is **Round 3**
+* The bot is **losing**
+* The bot has **not used its bomb**
+
+➡️ The bot will deterministically choose **Bomb**
+
+This satisfies the requirement to “respond intelligently” without introducing unnecessary complexity.
 
 ---
 
 ## 🚀 How to Run
 
 ### Prerequisites
+
 * Python 3.9+
-* A Google Cloud API Key (for Gemini)
+* Google Gemini API Key
+
+---
 
 ### Installation
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/yourusername/rps-ai-referee.git](https://github.com/yourusername/rps-ai-referee.git)
-   cd rps-ai-referee
 
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/sayandip30882636/AI-Game-Referee-Rock-Paper-Scissors-Plus.git
+cd AI-Game-Referee-Rock-Paper-Scissors-Plus
 ```
 
-2. **Install dependencies:**
+2. **Install dependencies**
+
 ```bash
 pip install google-generativeai
-
 ```
 
+3. **Configure API Key**
 
-3. **Configure API Key:**
-Open `Rock_Paper_Scissors_Referee_ADK.ipynb` and paste your key at the bottom:
-```
-python
-MY_API_KEY = "YOUR_GOOGLE_API_KEY_HERE"
+Open `Rock_Paper_Scissors_Referee_ADK.ipynb` and add:
 
-```
-
-
-4. **Run the Game:**
-```bash
-Go to VsCode or Colab / any notebook then run the ipynb file 
-
+```python
+GEMINI_API_KEY = "YOUR_API_KEY_HERE"
 ```
 
+4. **Run the game**
 
+Open the notebook in **VS Code, Colab, or Jupyter**, and run all cells sequentially.
 
 ---
 
 ## 🔮 Future Improvements
 
-* **Persistence:** Implement SQLite storage to allow game sessions to survive server restarts.
-* **GUI:** Upgrade from CLI to a **Streamlit** web interface for better visualization of the round history.
-* **Dockerization:** Containerize the application for easier deployment.
+* **Persistence:** Add lightweight session storage (e.g., SQLite) for resumable games
+* **UI:** Replace CLI interaction with a Streamlit-based interface
+* **Testing:** Add unit tests for move validation and round resolution
+* **Packaging:** Convert notebook into a single Python entry-point script
 
 ---
 
-**Author:** Sayandip
-**Tech Stack:** Python, Google GenAI SDK (ADK)
+## 👤 Author
 
+**Sayandip Ghosh**
+
+**Tech Stack:**
+Python · Google ADK · Gemini Models · Deterministic Tooling
+
+---
+
+Just tell me 👍
